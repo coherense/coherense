@@ -1,0 +1,7 @@
+*** Settings ***
+Documentation     RM_TOOLS_SM_001 - Login
+
+*** Test Cases ***
+RM_TOOLS_SM_001_VTS_01_MVT_L1_01
+
+RM_TOOLS_SM_001_VTS_01_MVT_L1_02
