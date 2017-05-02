@@ -1,1 +1,3 @@
 # coherense
+
+The Coherense project implies.....

@@ -1,0 +1,336 @@
+*** Settings ***
+Library           Selenium2Library
+Library           Collections
+Library           AutoItLibrary
+Library           CoherenSE.py
+Variables         GUI_data.py
+Variables         Test_data.py
+Library           Dialogs
+
+*** Keywords ***
+Open Application
+    Open Browser    url=${App.server}    browser=${App.browser}
+    Wait    ${login.isopen}
+    #Maximize Browser Window
+
+Login as "${user}"
+    # DATA
+    ${username}=    Set Variable    ${${user}.name}
+    Write    ${login.username}    ${username}
+    Write    ${login.password}    ${${user}.password}    logged=${False}
+    # SUBMIT
+    Click    ${login.submit}
+    ${element}=    Replace Variables    ${header.isopen.id}
+    Wait Locator    ${element}
+
+Log Out
+    Click    ${header.logout}
+    Wait    ${login.isopen}
+
+Add New User as "${user}"
+    # NAVIGATION
+    Navigate To    ${admin_home.user_admin}
+    # SET
+    Click    ${admin_home.user_admin.new_user}
+    Wait    ${admin_home.user_admin.submit}    type=visible
+    # DATA
+    Write    ${admin_home.user_admin.username}    ${${user}.name}
+    Write    ${admin_home.user_admin.password}    ${${user}.password}    logged=${False}
+    Write    ${admin_home.user_admin.confirm_password}    ${${user}.password}    logged=${False}
+    Set CkeckBox    ${admin_home.user_admin.defimp_field}    ${${user}.defimp}
+    Set CkeckBox    ${admin_home.user_admin.sdp_field}    ${${user}.sdp}
+    Set CkeckBox    ${admin_home.user_admin.sip_field}    ${${user}.sip}
+    Set CkeckBox    ${admin_home.user_admin.vsd_field}    ${${user}.vsd}
+    Set CkeckBox    ${admin_home.user_admin.stp_field}    ${${user}.stp}
+    # SUBMIT
+    Click    ${admin_home.user_admin.submit}
+    Wait    ${admin_home.user_admin.submit}    type=~visible
+
+Verify "${user}" User Creation
+    # CHECK
+    ${username}=    Set Variable    ${${user}.name}
+    ${element}=    Replace Variables    ${admin_home.user_admin.user_column.id}
+    Wait Locator    ${element}
+    ${element}=    Replace Variables    ${admin_home.user_admin.defimp_column.id}
+    Check CkeckBox    ${element}    ${${user}.defimp}
+    ${element}=    Replace Variables    ${admin_home.user_admin.sdp_column.id}
+    Check CkeckBox    ${element}    ${${user}.sdp}
+    ${element}=    Replace Variables    ${admin_home.user_admin.sip_column.id}
+    Check CkeckBox    ${element}    ${${user}.sip}
+    ${element}=    Replace Variables    ${admin_home.user_admin.vsd_column.id}
+    Check CkeckBox    ${element}    ${${user}.vsd}
+    ${element}=    Replace Variables    ${admin_home.user_admin.stp_column.id}
+
+Import Definitions from "${file}" File
+    # NAVIGATION
+    Click    ${header.defimp_tab}
+    Wait    ${leader_home.impdef_tab.isopen}    type=visible
+    # SET
+    Click    ${leader_home.impdef_tab.browse}
+    Chose Definitions File    ${file}
+    Click    ${leader_home.impdef_tab.import_}
+    Wait Operation    ${statusbar.wait}
+    # CHECK
+    : FOR    ${msg}    IN    @{statusbar.errors.id}
+    \    ${locator}=    Replace Variables    ${statusbar.error_msg.id}
+    \    Page Should Not Contain Element    ${locator}    message=SIP File Contains Errors
+
+Publish Definitions With Tag "${tag}"
+    # SUBMIT
+    Submit
+    # PUBLISH
+    Wait    ${toolbar.publish}    type=enable
+    Click    ${toolbar.publish}
+    # TAG
+    Wait    ${leader_home.impdef_tab.tag_dialog.isopen}
+    Write    ${leader_home.impdef_tab.tag_dialog.tag}    ${tag}
+    Click    ${leader_home.impdef_tab.tag_dialog.publish}
+    Wait Operation    ${statusbar.ok_msg}
+
+Create a New Project with Name "${project}"
+    # NAVIGATION
+    Click    ${header.sip_tab}
+    Wait    ${leader_home.sip_tab.isopen}    type=visible
+    Navigate to    ${leader_home.sip_tab.leader_proj}
+    # SET
+    Click    ${leader_home.sip_tab.leader_proj.new_proj}
+    Sleep    1
+    Wait    ${leader_home.sip_tab.leader_proj.newproj.isopen}    type=visible
+    # DATA
+    Write    ${leader_home.sip_tab.leader_proj.newproj.proj_name}    ${${project}.name}
+    Write    ${leader_home.sip_tab.leader_proj.newproj.proj_desc}    ${${project}.desc}
+    Select Label From Combobox    ${leader_home.sip_tab.leader_proj.newproj.platform.id}    ${${project}.os}
+    : FOR    ${user}    IN    @{${project}.users}
+    \    Select Label From Combobox    ${leader_home.sip_tab.leader_proj.newproj.users.id}    ${user}
+    \    Click    ${leader_home.sip_tab.leader_proj.newproj.user_add}
+    # SUBMIT
+    Click    ${leader_home.sip_tab.leader_proj.newproj.create}
+
+Select Project with Name "${project}"
+    ${project}=    Set Variable    ${${project}.name}
+    ${locator}=    Replace Variables    ${leader_home.sip_tab.leader_proj.proj.id}
+    Wait    ${leader_home.sip_tab.leader_proj.projs}    type=visible
+    Click Locator    ${locator}
+    Navigate to    ${leader_home.sip_tab.leader_proj.items}
+
+Add to Project "${project}" an "${type}" "${item}"
+    # DATA
+    ${service}    ${implementation}    ${dummy}    ${dummy}=    Set Variable    ${${project}.get_${type.lower()}serv_data("${item}")}
+    # SEARCH
+    Click    ${leader_home.sip_tab.leader_proj.items.set_servs}
+    ${locator}=    Replace Variables    ${leader_home.sip_tab.leader_proj.items.set_item.id}
+    Click Locator    ${locator}
+    Click    ${leader_home.sip_tab.leader_proj.items.search}
+    # SELECT
+    ${locator}=    Replace Variables    ${leader_home.sip_tab.leader_proj.items.add_item.id}
+    Click Locator    ${locator}
+    # CHECK
+    ${locator}=    Replace Variables    ${leader_home.sip_tab.leader_proj.items.implement.id}
+    Sleep    0.2
+    Wait Locator    ${locator}    type=visible
+
+Assign Project "${project}" Item "${item}" to User "${user}"
+    # DATA
+    ${dummy}    ${dummy}    ${tab}    ${dummy}=    Set Variable    ${${project}.get_itemserv_data("${item}")}
+    # TAB
+    ${locator}=    Replace Variables    ${leader_home.sip_tab.leader_proj.assign.tab.id}
+    Click Locator    ${locator}
+    # ASSIGN
+    ${locator}=    Replace Variables    ${leader_home.sip_tab.leader_proj.assign.set_user.id}
+    Wait Locator    ${locator}    type=visible
+    Select From List By Label    ${locator}    ${${user}.name}
+
+Submit
+    Wait    ${toolbar.submit}    type=enable
+    Click    ${toolbar.submit}
+    Wait Operation    ${statusbar.ok_msg}
+
+Navigate to
+    [Arguments]    ${element}    ${timeout}=10
+    Click    ${element.isself}
+    Wait    ${element.isopen}    type=visible    timeout=${timeout}
+
+Verify Project "${project}" Assignment
+    # NAVIGATION
+    Click    ${header.sip_tab}
+    Wait    ${worker_home.sip_tab.isopen}    type=visible
+    # CHECK
+    ${project}=    Set Variable    ${${project}.name}
+    ${locator}=    Replace Variables    ${worker_home.sip_tab.row_proj.id}
+    Wait Locator    ${locator}    type=visible
+
+Syncronize "${project}" With "${reference}"
+    # NAVIGATION
+    ${project}=    Set Variable    ${${project}.name}
+    ${locator}=    Replace Variables    ${worker_home.sip_tab.sync.id}
+    Click Locator    ${locator}
+    Wait    ${worker_home.sip_tab.sync_page.isopen}    type=visible
+    # SYNC
+    Wait    ${worker_home.sip_tab.sync_page.compare}    type=visible
+    Select From List By Label    ${worker_home.sip_tab.sync_page.compare.id}    ${reference}
+    Wait    ${worker_home.sip_tab.sync_page.sync}    type=enable
+    Sleep    0.5
+    Click    ${worker_home.sip_tab.sync_page.sync}
+
+======================
+
+Write
+    [Arguments]    ${element}    ${text}    ${logged}=${True}    ${timeout}=10
+    Wait    ${element}    type=visible    timeout=${timeout}
+    Run Keyword If    ${logged}    Input Text    ${element.id}    ${text}
+    Run Keyword Unless    ${logged}    Input Password    ${element.id}    ${text}
+
+Click
+    [Arguments]    ${element}    ${timeout}=10
+    Wait    ${element}    type=visible    timeout=${timeout}
+    Run Keyword If    '${element.type}'=='button'    Click Button    ${element.id}
+    ...    ELSE IF    '${element.type}'=='img'    Click Image    ${element.id}
+    ...    ELSE IF    '${element.type}'=='link'    Click Link    ${element.id}
+    ...    ELSE    Click Element    ${element.id}
+
+Click Locator
+    [Arguments]    ${locator}    ${timeout}=10
+    Wait Locator    ${locator}    type=visible    timeout=${timeout}
+    Click Element    ${locator}
+
+Wait
+    [Arguments]    ${element}    ${type}=element    ${timeout}=10
+    Run Keyword If    '${type.lower()}'=='contains'    Wait Until Page Contains    ${element.txt}    timeout=${timeout}
+    ...    ELSE IF    '${type.lower()}'=='~contains'    Wait Until Page Does Not Contain    ${element.txt}    timeout=${timeout}
+    ...    ELSE IF    '${type.lower()}'=='visible'    Wait Until Element Is Visible    ${element.id}    timeout=${timeout}
+    ...    ELSE IF    '${type.lower()}'=='~visible'    Wait Until Element Is Not Visible    ${element.id}    timeout=${timeout}
+    ...    ELSE IF    '${type.lower()}'=='enable'    Wait Until Element Is Enabled    ${element.id}    timeout=${timeout}
+    ...    ELSE IF    '~' in '${type.lower()}'    Wait Until Page Does Not Contain Element    ${element.id}    timeout=${timeout}
+    ...    ELSE    Wait Until Page Contains Element    ${element.id}    timeout=${timeout}
+
+Wait Locator
+    [Arguments]    ${locator}    ${type}=element    ${timeout}=10
+    Run Keyword If    '${type.lower()}'=='contains'    Wait Until Page Contains    ${locator}    timeout=${timeout}
+    ...    ELSE IF    '${type.lower()}'=='~contains'    Wait Until Page Does Not Contain    ${locator}    timeout=${timeout}
+    ...    ELSE IF    '${type.lower()}'=='visible'    Wait Until Element Is Visible    ${locator}    timeout=${timeout}
+    ...    ELSE IF    '${type.lower()}'=='~visible'    Wait Until Element Is Not Visible    ${locator}    timeout=${timeout}
+    ...    ELSE IF    '${type.lower()}'=='enable'    Wait Until Element Is Enabled    ${locator}    timeout=${timeout}
+    ...    ELSE IF    '~' in '${type.lower()}'    Wait Until Page Does Not Contain Element    ${locator}    timeout=${timeout}
+    ...    ELSE    Wait Until Page Contains Element    ${locator}    timeout=${timeout}
+
+Wait Operation
+    [Arguments]    ${element}    ${timeout}=10
+    Wait    ${element}    type=visible    timeout=${timeout}
+    Wait    ${element}    type=~visible    timeout=${timeout}
+
+Set CkeckBox
+    [Arguments]    ${element}    ${set}=${True}    ${timeout}=10
+    Wait    ${element}    type=visible    timeout=${timeout}
+    Run Keyword If    ${set}    Select Checkbox    ${element.id}
+    Run Keyword Unless    ${set}    Unselect Checkbox    ${element.id}
+
+Check CkeckBox
+    [Arguments]    ${locator}    ${value}=${True}    ${timeout}=10
+    Wait Locator    ${locator}    type=visible    timeout=${timeout}
+    Run Keyword If    ${value}    Checkbox Should Be Selected    ${locator}
+    Run Keyword Unless    ${value}    Checkbox Should Not Be Selected    ${locator}
+
+Chose Definitions File
+    [Arguments]    ${file}    ${timeout}=10
+    ${filepath}=    Set Variable    ${CURDIR}${/}${file}
+    Wait For Active Window    WindowTitle=${leader_home.impdef_tab.import_dialog.isopen.id}    TimeOut=${timeout}    WindowText=
+    Control Set Text    strTitle=${leader_home.impdef_tab.import_dialog.isopen.id}    strControl=${leader_home.impdef_tab.import_dialog.filename.id}    strControlText=${filepath}    strText=
+    Control Click    strTitle=${leader_home.impdef_tab.import_dialog.isopen.id}    strControl=${leader_home.impdef_tab.import_dialog.open.id}    strText=
+
+=============
+
+Select Project Properties with Name "${project}"
+    ${row}=    Get Table Row    ${worker_home['tasks_table']}    ${project}
+    ${element}=    Replace Variables    ${worker_home['task_row']}
+    Click Element    ${element}
+    Wait Until Element Is Visible    ${worker_home['status_title']}
+    Click Element    ${worker_home['properties_tab']}
+    Wait Until Element Is Visible    ${worker_home['properties_title']}
+
+Set Metadata to Item "${item}"
+    ${tab}    ${cpu_value}    ${mem_value}=    Set Variable    ${project_metadata['${item}']}
+    ${element}=    Replace Variables    ${worker_home['properties_services_tab']}
+    Click Element    ${element}
+    ${element_item}=    Replace Variables    ${worker_home['properties_items']}
+    Click Element    ${element_item}
+    ${element}=    Replace Variables    ${worker_home['properties_meta_tab']}
+    Run Keyword If    '${tab.lower()}'=='services'    Click Element    ${element}
+    ${element}=    Replace Variables    ${worker_home['properties_cpu']}
+    Input Text    ${element}    ${cpu_value}
+    ${element}=    Replace Variables    ${worker_home['properties_cpu_set']}
+    Click Element    ${element}
+    Wait Operation Sucess    ${worker_home['set_ok_msg']}
+    ${element}=    Replace Variables    ${worker_home['properties_mem']}
+    Input Text    ${element}    ${mem_value}
+    ${element}=    Replace Variables    ${worker_home['properties_mem_set']}
+    Click Element    ${element}
+    Wait Operation Sucess    ${worker_home['set_ok_msg']}
+    Click Element    ${element_item}
+
+Navivate to Status Tab
+    Click Element    ${worker_home['status_tab']}
+    Wait Until Element Is Visible    ${worker_home['status_title']}
+
+Set to Submission the Item "${item}"
+    ${tab}    ${dummy}    ${dummy}=    Set Variable    ${project_metadata['${item}']}
+    ${element}=    Replace Variables    ${worker_home['status_services_tab']}
+    Click Element    ${element}
+    ${element}=    Replace Variables    ${worker_home['status_items_to_submit']}
+    Click Element    ${element}
+
+Submit Metadata
+    Click Element    ${worker_home['submit_button']}
+    Wait Operation Sucess    ${worker_home['set_ok_msg']}
+
+Navigate Back
+    Click Element    ${leader_home['back_to_dashboard_button']}
+    Wait Until Element Is Visible    ${leader_home['dashboard_title']}
+
+Discard Project "${project}"
+    ${element}=    Replace Variables    ${leader_home['project_discard_button']}
+    Click Element    ${element}
+    Wait Operation Sucess    ${sip_tab['submit_ok_msg']}
+
+----------------------------------
+
+Select Label From Combobox
+    [Arguments]    ${combobox}    ${label}
+    Mouse Over    ${combobox}
+    Select From List By Label    ${combobox}    ${label}
+
+Get Table Row
+    [Arguments]    ${table}    ${name}
+    ${rows}=    Get Matching Xpath Count    xpath=${table}/tbody/tr
+    : FOR    ${row}    IN RANGE    1    ${${rows}+1}
+    \    ${status}    Run Keyword And Return Status    Table Row Should Contain    xpath=${table}    ${row}    ${name}
+    \    Exit For Loop If    ${status}
+    ${row}=    Set Variable If    ${status}    ${row}    ${None}
+    [Return]    ${row}
+
+Select Item for SIP Project
+    [Arguments]    ${item}
+    Wait Until Element Is Visible    ${sip_tab['projects_item_combobox']}
+    Click Element    ${sip_tab['projects_item_combobox']}
+    ${choice}=    Replace Variables    ${sip_tab['projects_item_choice']}
+    Click Element    ${choice}
+    Click Element    ${sip_tab['projects_item_search']}
+
+Add result to Project
+    [Arguments]    ${item}
+    ${button}=    Replace Variables    ${sip_tab['project_results_add_button']}
+    Wait Until Element Is Visible    ${button}
+    Click Element    ${button}
+
+Wait Operation Sucess
+    [Arguments]    ${alert}
+    Wait Until Element Is Visible    ${alert}    timeout=10
+    Wait Until Page Does Not Contain Element    ${alert}    timeout=30
+
+Start
+    Return From Keyword
+    CoherenSE.Run    ip=${App.host}    port=${App.port}
+
+Finish
+    Kill Driver    ${App.browser}
+    Return From Keyword
+    CoherenSE.Kill
